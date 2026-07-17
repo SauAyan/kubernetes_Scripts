@@ -1,0 +1,21 @@
+apiVersion: v1 # based on kind
+kind: Pod # can be Pod, Service, Replica Set or Deployment
+metadata: # Should be a dictionary
+  name: postgres-pod
+  labels:
+    name: postgres-pod
+    app: demo-voting-app
+spec: # Should be a list
+  containers:
+    - name: postgres
+      image: postgres # postgres image docker hub
+      ports: 
+        - containerPort: 5432 # Port of the container which is exposed for the service
+      env:
+        - name: POSTGRES_USER
+          value: "postgres"
+        - name: POSTGRES_PASSWORD
+          value: "postgres"
+        - name: POSTGRES_HOST_AUTH_METHOD
+          value: trust
+    

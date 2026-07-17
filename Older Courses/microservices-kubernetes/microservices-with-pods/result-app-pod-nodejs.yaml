@@ -1,0 +1,14 @@
+apiVersion: v1 # based on kind
+kind: Pod # can be Pod, Service, Replica Set or Deployment
+metadata: # Should be a dictionary
+  name: result-app-pod-nodejs
+  labels:
+    name: result-app-pod-nodejs
+    app: demo-voting-app
+spec: # Should be a list
+  containers:
+    - name: nodejs-result-app
+      image: kodekloud/examplevotingapp_result:v1 # Custom image build and pushed into docker hub
+      ports: 
+        - containerPort: 80 # Port of the container which is exposed for the service
+    

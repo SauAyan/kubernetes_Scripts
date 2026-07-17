@@ -1,0 +1,17 @@
+1. Check him on youtube channel of Network Nuts
+https://www.youtube.com/user/networknutsdotnet
+
+
+2. "How to setup a kubernetes cluster in a production environment behind a firewall " - Check the playlist to learn which is not a part of any official training - 
+https://www.youtube.com/playlist?list=PLKqyiDdtB8i6gdX1eD-K_J5CuG4iwc6N5
+
+3. Docker 1st session:
+https://player.vimeo.com/progressive_redirect/playback/1114494198/rendition/720p/file.mp4%20%28720p%29.mp4?loc=external&log_user=0&signature=59e71a88fee8aa92cd30d6215b71f17410a7df783f6484a7fcec5a4cdfd41dbd
+
+
+4. CKA - session one:
+https://player.vimeo.com/progressive_redirect/playback/1181480089/rendition/720p/file.mp4%20%28720p%29.mp4?loc=external&log_user=0&signature=6092568b8a721a5534b62317aaffe20bd7e55f688ed256b6e75b746524416316
+
+5. Topic: Deployment Strategies:
+https://player.vimeo.com/progressive_redirect/playback/1181205649/rendition/720p/file.mp4%20%28720p%29.mp4?loc=external&log_user=0&signature=3c2ca58792ed45f38d921210b65fc92c5912d7e3576b3e33a289189ccf7b561d
+

@@ -1,0 +1,24 @@
+kubectl create -f demo-pod.yaml
+kubectl get pods
+kubectl describe pods nginx-demo
+kubectl delete pods nginx-demo --grace-period=0 --force
+
+kubectl create -f demo-replicaset.yaml
+kubectl get pods
+kubectl get replicaset
+kubectl delete replicaset myapp-replicaset --grace-period=0 --force
+
+kubectl create -f demo-deployment.yaml --record
+kubectl get pods
+kubectl get replicaset
+kubectl get deployments
+kubectl rollout status deployment.apps/myapp-deployment
+kubectl rollout history deployment.apps/myapp-deployment
+kubectl rollout undo deployment.apps/myapp-deployment
+
+kubectl create -f demo-nodePort-service.yaml --record
+kubectl get services
+kubectl delete services myapp-services --grace-period=0 --force
+
+# Deploy all yaml files in the folder
+kubectl create -f . 

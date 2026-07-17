@@ -1,0 +1,14 @@
+apiVersion: v1 # based on kind
+kind: Pod # can be Pod, Service, Replica Set or Deployment
+metadata: # Should be a dictionary
+  name: voting-app-pod-python
+  labels:
+    name: voting-app-pod-python
+    app: demo-voting-app
+spec: # Should be a list
+  containers:
+    - name: python-voting-app
+      image: kodekloud/examplevotingapp_vote:v1 # Custom image build and pushed into docker hub
+      ports: 
+        - containerPort: 80 # Port of the container which is exposed for the service
+    

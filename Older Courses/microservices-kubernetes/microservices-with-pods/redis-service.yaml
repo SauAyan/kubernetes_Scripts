@@ -1,0 +1,15 @@
+apiVersion: v1 # API version defines the version of the Kubernetes resource
+kind: Service # This resource is a service-nodeport
+metadata: # Metadata contains data that helps uniquely identify the object
+  name: redis # Name of the service-nodeport
+  labels: # Labels are key/value pairs that are attached to objects
+    name: redis
+    app: demo-voting-app
+spec: # Spec defines the desired state of the object
+  type: ClusterIP
+  ports:
+    - port: 6379 # Port of the Service
+      targetPort: 6379 # Target port on the POD      
+  selector: # Meta data of POD. get this from template of deployment or replica set. Use value in the matchLabels part
+    name: reddis-pod
+    app: demo-voting-app

@@ -1,0 +1,26 @@
+apiVersion: apps/v1 # API version defines the version of the Kubernetes resource
+kind: ReplicaSet # This resource is a ReplicaSet
+metadata: # Metadata contains data that helps uniquely identify the object
+  name: myapp-replicaset # Name of the ReplicaSet
+  labels: # Labels are key/value pairs that are attached to objects
+    app: myapp
+    tier: frontend-app
+spec: # Spec defines the desired state of the object
+  replicas: 3 # Specifies the desired number of pod replicas
+  selector: # Selector is used to find which pods belong to this ReplicaSet
+    matchLabels:
+      app: nginx-postgres # These labels should match the pod labels that the ReplicaSet should manage
+  template: # Template defines the pods that will be created from this ReplicaSet
+    metadata:
+      labels: # Labels for pods created from this template
+        app: nginx-postgres
+        tier: frontend-app
+    spec: # Specification of the pod's containers, and other settings
+      containers: # List of containers inside the pod
+      - name: nginx-container # Name of the first container
+        image: nginx # Docker image for the first container
+      - name: postgres-container # Name of the second container
+        image: postgres # Docker image for the second container
+        env: # Environment variables for the container
+          - name: POSTGRES_PASSWORD # Environment variable name
+            value: mysecretpassword # Value of the environment variable

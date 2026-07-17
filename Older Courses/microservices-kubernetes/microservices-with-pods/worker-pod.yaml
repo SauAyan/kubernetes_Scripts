@@ -1,0 +1,13 @@
+apiVersion: v1 # based on kind
+kind: Pod # can be Pod, Service, Replica Set or Deployment
+metadata: # Should be a dictionary
+  name: worker-pod
+  labels:
+    name: worker-pod
+    app: demo-voting-app
+spec: # Should be a list
+  containers:
+    - name: worker-app
+      image: kodekloud/examplevotingapp_worker:v1 # Custom image build and pushed into docker hub
+
+    

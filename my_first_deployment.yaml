@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+      resources:
+      # NOTE: Guaranteed pods require requests and limits to be EXACTLY EQUAL
+      # for both CPU and memory across all containers.
+          requests:
+             memory: "128Mi"
+             cpu: "500m"
+          limits:
+             memory: "128Mi"
+             cpu: "500m"

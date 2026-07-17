@@ -1,0 +1,16 @@
+apiVersion: v1 # based on kind
+kind: Pod # can be Pod, Service, Replica Set or Deployment
+metadata: # Should be a dictionary
+  name: nginx-postgres-demo
+  labels:
+    app: nginx-postgres
+    tier: frontend-app
+spec: # Should be a list
+  containers:
+    - name: nginx-container
+      image: nginx
+    - name: postgres
+      image: postgres
+      env: 
+        - name: POSTGRES_PASSWORD
+          value: mysecretpassword
