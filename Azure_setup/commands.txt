@@ -1,0 +1,15 @@
+icacls "C:\Users\Ayan\Downloads\Kubernetes\Azure_setup\Azure_ssh_keys\k8s-gateway-key.pem" /inheritance:r
+icacls "C:\Users\Ayan\Downloads\Kubernetes\Azure_setup\Azure_ssh_keys\k8s-gateway-key.pem" /grant:r "%USERNAME%:R"
+
+# Gateway
+ssh -i "C:\Users\Ayan\Downloads\Kubernetes\Azure_setup\Azure_ssh_keys\k8s-gateway-key.pem" azureuser@20.197.31.133
+
+# Manager (The -A option forwards access to your local SSH key into the gateway session without storing the private key there. cONNECT IN POWERSHELL ADMIN if cmd fails)
+ssh -A -i "C:\Users\Ayan\Downloads\Kubernetes\Azure_setup\Azure_ssh_keys\k8s-gateway-key.pem" azureuser@20.197.31.133
+ssh azureuser@10.0.1.10
+
+# Nodes
+ssh -A -i "C:\Users\Ayan\Downloads\Kubernetes\Azure_setup\Azure_ssh_keys\k8s-gateway-key.pem" azureuser@20.197.31.133
+ssh azureuser@10.0.1.11
+ssh azureuser@10.0.1.12
+ssh azureuser@10.0.1.13

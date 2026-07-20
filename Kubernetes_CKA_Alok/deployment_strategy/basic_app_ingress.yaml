@@ -69,7 +69,8 @@ spec:
                   number: 80
 
 
+#curl --resolve base.com:80:<External IP> http://base.com:80
+#while true; do curl --resolve base.com:80:<External IP> http://base.com:80 ; done
 
-
-#curl --resolve base.com:80:192.168.10.0 http://base.com:80
-#while true; do curl --resolve base.com:80:192.168.10.0 http://base.com:80 ; done
+#curl --resolve base.com:80:192.168.10.50 http://base.com:80
+#while true; do curl --resolve base.com:80:192.168.10.50 http://base.com:80 ; done
