@@ -1,0 +1,119 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: web-demo
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-v1
+  namespace: web-demo
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Kubernetes Ingress Demo</title>
+      </head>
+      <body>
+        <h1>Hello from V1</h1>
+        <p>Served through NGINX Ingress and Azure Load Balancer.</p>
+      </body>
+    </html>
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: web-demo
+spec:
+  replicas: 7
+
+  selector:
+    matchLabels:
+      app: web
+
+  template:
+    metadata:
+      labels:
+        app: web
+        version: v1
+
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:stable-alpine
+
+          ports:
+            - name: http
+              containerPort: 80
+
+          volumeMounts:
+            - name: www
+              mountPath: /usr/share/nginx/html/index.html
+              subPath: index.html
+              readOnly: true
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+      volumes:
+        - name: www
+          configMap:
+            name: web-v1
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: web-demo
+spec:
+  type: ClusterIP
+
+  selector:
+    app: web
+
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: http
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web
+  namespace: web-demo
+spec:
+  ingressClassName: nginx
+
+  rules:
+    - host: base.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 80
+
+
+# curl --resolve base.com:80:52.140.82.132 http://base.com/
+# while true; do curl --resolve base.com:80:52.140.82.132 http://base.com/ ; done

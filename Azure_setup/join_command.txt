@@ -1,0 +1,25 @@
+
+# In Manager
+sudo kubeadm token create --print-join-command
+
+It will print a complete command with the actual token and hash. Add this at the end:
+
+--cri-socket unix:///run/containerd/containerd.sock
+
+# In Gateway
+
+
+JOIN_COMMAND='sudo kubeadm join 10.0.1.10:6443 --token REAL_TOKEN --discovery-token-ca-cert-hash sha256:REAL_HASH --cri-socket unix:///run/containerd/containerd.sock'
+
+for node in 10.0.1.11 10.0.1.12 10.0.1.13; do
+  echo "Joining $node"
+  ssh -t azureuser@"$node" "$JOIN_COMMAND"
+done
+
+Example:
+JOIN_COMMAND='sudo kubeadm join 10.0.1.10:6443 --token ulgi4u.pb7l0valkmx8i71b --discovery-token-ca-cert-hash sha256:c7220e20582d278f9a6b398522e662e313915d9f88940aa42d5b49e7a9d49cbe --cri-socket unix:///run/containerd/containerd.sock'
+
+for node in 10.0.1.11 10.0.1.12 10.0.1.13; do
+  echo "Joining $node"
+  ssh -t azureuser@"$node" "$JOIN_COMMAND"
+done

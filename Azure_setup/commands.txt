@@ -13,3 +13,46 @@ ssh -A -i "C:\Users\Ayan\Downloads\Kubernetes\Azure_setup\Azure_ssh_keys\k8s-gat
 ssh azureuser@10.0.1.11
 ssh azureuser@10.0.1.12
 ssh azureuser@10.0.1.13
+
+# kubernetes_setup.sh
+
+chmod +x kubernetes_setup.sh
+sudo ./kubernetes_setup.sh
+
+Run on:
+
+k8s-manager — 10.0.1.10
+k8s-node-1 — 10.0.1.11
+k8s-node-2 — 10.0.1.12
+k8s-node-3 — 10.0.1.13
+
+Do not run on: k8s-gateway
+
+# install_workers.sh
+
+chmod +x install_workers.sh
+./install_workers.sh
+
+Copy and run the setup script on all worker nodes
+
+Run only on: k8s-gateway
+
+# validate_workers.sh
+
+chmod +x validate_workers.sh
+./validate_workers.sh
+
+Validate installation on all worker nodes
+
+# Your final placement should be:
+k8s-manager:
+  kubernetes_setup.sh
+
+k8s-gateway:
+  kubernetes_setup.sh
+  install_workers.sh
+  validate_workers.sh
+
+worker nodes:
+  kubernetes_setup.sh copied and executed remotely
+
