@@ -117,3 +117,8 @@ spec:
 
 # curl --resolve base.com:80:52.140.82.132 http://base.com/
 # while true; do curl --resolve base.com:80:52.140.82.132 http://base.com/ ; done
+# For Powershell
+# while ($true) {
+#     curl.exe --silent --resolve base.com:80:52.140.82.132 http://base.com/
+#     Start-Sleep -Seconds 1
+# }

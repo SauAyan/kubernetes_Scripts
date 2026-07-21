@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-v3
+  namespace: web-demo
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Rolling Update Demo</title>
+      </head>
+      <body>
+        <h1>Hello from V3</h1>
+        <p>Deployed using the Kubernetes RollingUpdate strategy.</p>
+      </body>
+    </html>
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: web-demo
+spec:
+  replicas: 7
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+
+  selector:
+    matchLabels:
+      app: web
+
+  template:
+    metadata:
+      labels:
+        app: web
+        version: v3
+
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:stable-alpine
+
+          ports:
+            - name: http
+              containerPort: 80
+
+          volumeMounts:
+            - name: www
+              mountPath: /usr/share/nginx/html/index.html
+              subPath: index.html
+              readOnly: true
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 3
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+      volumes:
+        - name: www
+          configMap:
+            name: web-v3
