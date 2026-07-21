@@ -207,7 +207,6 @@ EOF
       --ssh-key-values "$SSH_PUBLIC_KEY_FILE" \
       --os-disk-size-gb "$OS_DISK_SIZE_GB" \
       --storage-sku "$STORAGE_SKU" \
-      --security-type Standard \
       --custom-data "$CLOUD_INIT" \
       --only-show-errors >/dev/null
 
