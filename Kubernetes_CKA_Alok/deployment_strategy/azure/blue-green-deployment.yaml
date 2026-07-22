@@ -1,0 +1,230 @@
+# ============================================================
+# BLUE-GREEN DEPLOYMENT DEMO
+#
+# Active environment initially: BLUE
+# Preview environment: GREEN
+#
+# Production traffic:
+# Azure Load Balancer
+#   -> NGINX Ingress
+#   -> web Service
+#   -> Pods selected by deployment-slot: blue
+#
+# To switch production to Green, patch the Service selector.
+# ============================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-blue-content
+  namespace: web-demo
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Blue-Green Deployment</title>
+      </head>
+      <body>
+        <h1>Hello from BLUE</h1>
+        <p>This is the currently active production version.</p>
+      </body>
+    </html>
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-green-content
+  namespace: web-demo
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Blue-Green Deployment</title>
+      </head>
+      <body>
+        <h1>Hello from GREEN</h1>
+        <p>This is the new candidate version.</p>
+      </body>
+    </html>
+
+---
+# BLUE DEPLOYMENT
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-blue
+  namespace: web-demo
+spec:
+  replicas: 3
+
+  selector:
+    matchLabels:
+      app: web
+      deployment-slot: blue
+
+  template:
+    metadata:
+      labels:
+        app: web
+        deployment-slot: blue
+        version: blue
+
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:stable-alpine
+
+          ports:
+            - name: http
+              containerPort: 80
+
+          volumeMounts:
+            - name: web-content
+              mountPath: /usr/share/nginx/html/index.html
+              subPath: index.html
+              readOnly: true
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 3
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+      volumes:
+        - name: web-content
+          configMap:
+            name: web-blue-content
+
+---
+# GREEN DEPLOYMENT
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-green
+  namespace: web-demo
+spec:
+  replicas: 3
+
+  selector:
+    matchLabels:
+      app: web
+      deployment-slot: green
+
+  template:
+    metadata:
+      labels:
+        app: web
+        deployment-slot: green
+        version: green
+
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:stable-alpine
+
+          ports:
+            - name: http
+              containerPort: 80
+
+          volumeMounts:
+            - name: web-content
+              mountPath: /usr/share/nginx/html/index.html
+              subPath: index.html
+              readOnly: true
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 3
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+      volumes:
+        - name: web-content
+          configMap:
+            name: web-green-content
+
+---
+# PRODUCTION SERVICE
+#
+# This selector controls which deployment receives production traffic.
+# It initially points to BLUE.
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: web-demo
+spec:
+  type: ClusterIP
+
+  selector:
+    app: web
+    deployment-slot: blue
+
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: http
+
+---
+# OPTIONAL GREEN PREVIEW SERVICE
+#
+# This allows Green to be tested internally before switching production.
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-green-preview
+  namespace: web-demo
+spec:
+  type: ClusterIP
+
+  selector:
+    app: web
+    deployment-slot: green
+
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: http
+
+---
+# EXISTING PRODUCTION INGRESS
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web
+  namespace: web-demo
+spec:
+  ingressClassName: nginx
+
+  rules:
+    - host: base.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 80

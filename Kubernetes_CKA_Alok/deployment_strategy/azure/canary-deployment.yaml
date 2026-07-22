@@ -1,0 +1,242 @@
+# ============================================================
+# NGINX INGRESS CANARY DEPLOYMENT DEMO
+#
+# Host: base.com
+# Stable traffic: approximately 80%
+# Canary traffic: approximately 20%
+# ============================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-stable-content
+  namespace: web-demo
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Canary Deployment Demo</title>
+      </head>
+      <body>
+        <h1>Hello from STABLE V1</h1>
+        <p>This request was handled by the stable deployment.</p>
+      </body>
+    </html>
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-canary-content
+  namespace: web-demo
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Canary Deployment Demo</title>
+      </head>
+      <body>
+        <h1>Hello from CANARY V2</h1>
+        <p>This request was handled by the canary deployment.</p>
+      </body>
+    </html>
+
+---
+# Stable deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-stable
+  namespace: web-demo
+spec:
+  replicas: 3
+
+  selector:
+    matchLabels:
+      app: web-canary-demo
+      release: stable
+
+  template:
+    metadata:
+      labels:
+        app: web-canary-demo
+        release: stable
+
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:stable-alpine
+
+          ports:
+            - name: http
+              containerPort: 80
+
+          volumeMounts:
+            - name: web-content
+              mountPath: /usr/share/nginx/html/index.html
+              subPath: index.html
+              readOnly: true
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 3
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+      volumes:
+        - name: web-content
+          configMap:
+            name: web-stable-content
+
+---
+# Canary deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-canary
+  namespace: web-demo
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: web-canary-demo
+      release: canary
+
+  template:
+    metadata:
+      labels:
+        app: web-canary-demo
+        release: canary
+
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:stable-alpine
+
+          ports:
+            - name: http
+              containerPort: 80
+
+          volumeMounts:
+            - name: web-content
+              mountPath: /usr/share/nginx/html/index.html
+              subPath: index.html
+              readOnly: true
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 3
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+      volumes:
+        - name: web-content
+          configMap:
+            name: web-canary-content
+
+---
+# Stable service
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-stable
+  namespace: web-demo
+spec:
+  type: ClusterIP
+
+  selector:
+    app: web-canary-demo
+    release: stable
+
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+
+---
+# Canary service
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-canary
+  namespace: web-demo
+spec:
+  type: ClusterIP
+
+  selector:
+    app: web-canary-demo
+    release: canary
+
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+
+---
+# Normal ingress sends traffic to Stable V1.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web-stable
+  namespace: web-demo
+spec:
+  ingressClassName: nginx
+
+  rules:
+    - host: base.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-stable
+                port:
+                  number: 80
+
+---
+# Canary ingress uses the same host and path.
+# NGINX sends approximately 20% of requests to Canary V2.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web-canary
+  namespace: web-demo
+  annotations:
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-weight: "20"
+    nginx.ingress.kubernetes.io/canary-weight-total: "100"
+
+spec:
+  ingressClassName: nginx
+
+  rules:
+    - host: base.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-canary
+                port:
+                  number: 80

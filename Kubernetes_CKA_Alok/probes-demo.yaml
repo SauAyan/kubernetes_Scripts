@@ -1,0 +1,181 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: probes-demo
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: probe-demo-script
+  namespace: probes-demo
+data:
+  server.py: |
+    import http.server
+    import socketserver
+    import time
+    import os
+
+    START_TIME = time.time()
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            uptime = int(time.time() - START_TIME)
+
+            # Application becomes started after 20 seconds.
+            started = uptime >= 20
+
+            # Readiness fails between 45 and 65 seconds.
+            ready = started and not (45 <= uptime < 65)
+
+            # Liveness fails permanently after 90 seconds.
+            live = uptime < 90
+
+            if self.path == "/startup":
+                if started:
+                    self.send_response(200)
+                    self.end_headers()
+                    self.wfile.write(b"STARTED")
+                else:
+                    self.send_response(503)
+                    self.end_headers()
+                    self.wfile.write(b"STARTING")
+
+            elif self.path == "/ready":
+                if ready:
+                    self.send_response(200)
+                    self.end_headers()
+                    self.wfile.write(b"READY")
+                else:
+                    self.send_response(503)
+                    self.end_headers()
+                    self.wfile.write(b"NOT READY")
+
+            elif self.path == "/live":
+                if live:
+                    self.send_response(200)
+                    self.end_headers()
+                    self.wfile.write(b"ALIVE")
+                else:
+                    self.send_response(500)
+                    self.end_headers()
+                    self.wfile.write(b"UNHEALTHY")
+
+            elif self.path == "/":
+                self.send_response(200)
+                self.end_headers()
+                message = (
+                    f"<html><body>"
+                    f"<h1>Probe Demo</h1>"
+                    f"<p>Pod: {os.getenv('HOSTNAME')}</p>"
+                    f"<p>Uptime: {uptime} seconds</p>"
+                    f"<p>Started: {started}</p>"
+                    f"<p>Ready: {ready}</p>"
+                    f"<p>Live: {live}</p>"
+                    f"</body></html>"
+                )
+                self.wfile.write(message.encode())
+
+            else:
+                self.send_response(404)
+                self.end_headers()
+
+        def log_message(self, format, *args):
+            return
+
+    with socketserver.TCPServer(("", 8080), Handler) as server:
+        server.serve_forever()
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: probe-demo
+  namespace: probes-demo
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: probe-demo
+
+  template:
+    metadata:
+      labels:
+        app: probe-demo
+
+    spec:
+      containers:
+        - name: probe-demo
+          image: python:3.12-alpine
+
+          command:
+            - python
+            - /app/server.py
+
+          ports:
+            - name: http
+              containerPort: 8080
+
+          volumeMounts:
+            - name: script
+              mountPath: /app/server.py
+              subPath: server.py
+              readOnly: true
+
+          startupProbe:
+            httpGet:
+              path: /startup
+              port: http
+
+            # Check every 5 seconds.
+            periodSeconds: 5
+
+            # Allow up to 30 seconds for startup.
+            failureThreshold: 6
+
+            timeoutSeconds: 2
+
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+
+            periodSeconds: 5
+            failureThreshold: 1
+            successThreshold: 1
+            timeoutSeconds: 2
+
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: http
+
+            periodSeconds: 5
+
+            # Restart after three consecutive failures.
+            failureThreshold: 3
+
+            timeoutSeconds: 2
+
+      volumes:
+        - name: script
+          configMap:
+            name: probe-demo-script
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: probe-demo
+  namespace: probes-demo
+spec:
+  type: ClusterIP
+
+  selector:
+    app: probe-demo
+
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
