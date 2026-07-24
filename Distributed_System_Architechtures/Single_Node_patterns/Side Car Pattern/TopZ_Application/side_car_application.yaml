@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: main-sidecar-app
+  namespace: learning
+  labels:
+    app: fastapi-system
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fastapi-system
+  template:
+    metadata:
+      labels:
+        app: fastapi-system
+    spec:
+      shareProcessNamespace: true
+      
+      containers:
+      # 1. Main Application Container
+      - name: main-application
+        image: ayansau/main_application:v1
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+          name: api-port
+
+      # 2. Sidecar Application Container
+      - name: sidecar-application
+        image: ayansau/sidecar_application:v1
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: monitor-port
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: main-app-service
+  namespace: learning
+spec:
+  type: ClusterIP
+  selector:
+    app: fastapi-system
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+      name: http-api
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sidecar-monitor-service
+  namespace: learning
+spec:
+  type: ClusterIP
+  selector:
+    app: fastapi-system
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+      name: http-monitor
