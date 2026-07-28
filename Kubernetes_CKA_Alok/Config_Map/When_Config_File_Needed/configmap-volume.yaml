@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dynamic-app-config
+  namespace: learning
+data:
+  settings.json: |
+    {
+      "feature_flag_discount": false,
+      "max_items_per_page": 10,
+      "maintenance_mode": false
+    }

@@ -1,0 +1,10 @@
+# Build
+docker build -t <docker username>/hot-reload-app:v1 .
+
+# Push to Docker Hub
+docker push <docker username>/hot-reload-app:v1
+
+kubectl apply -f configmap-volume.yaml
+kubectl apply -f deployment-volume.yaml
+
+kubectl edit configmap dynamic-app-config -n learning ----> edit any value to see changes without downtime

@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hot-reload-app
+  namespace: learning
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hot-reload-app
+  template:
+    metadata:
+      labels:
+        app: hot-reload-app
+    spec:
+      containers:
+      - name: python-app
+        image: <docker username>/hot-reload-app:v1   # <--- Clean, dedicated image
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config           # Directory mounted from ConfigMap
+          readOnly: true
+      volumes:
+      - name: config-volume
+        configMap:
+          name: dynamic-app-config

@@ -1,0 +1,11 @@
+# Replace <your-dockerhub-username> with your Docker Hub username
+
+docker build -t <your-dockerhub-username>/order-service:v1 .
+docker push <your-dockerhub-username>/order-service:v1
+
+kubectl apply -f configmap.yaml
+kubectl apply -f deployment.yaml
+
+kubectl port-forward svc/order-service-svc 8080:80 -n learning
+
+curl http://localhost:8080/
