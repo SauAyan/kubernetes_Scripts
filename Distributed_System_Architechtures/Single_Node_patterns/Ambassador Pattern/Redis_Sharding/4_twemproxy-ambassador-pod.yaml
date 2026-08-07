@@ -1,0 +1,130 @@
+# ============================================================================
+# FILE 4: Application Pod with a Twemproxy Ambassador container
+# ============================================================================
+# PURPOSE:
+# Demonstrate the Kubernetes AMBASSADOR pattern.
+#
+# Two containers run inside the SAME Pod:
+#
+#   1. nginx      -> represents your application
+#   2. twemproxy  -> acts as the application's Redis proxy/ambassador
+#
+# Containers in the same Pod share the same network namespace. Therefore the
+# application can reach Twemproxy using:
+#
+#   127.0.0.1:6379
+#
+# The application does NOT need to know that three Redis shards exist.
+# Twemproxy hides that complexity and routes each Redis key to the appropriate
+# Redis Pod according to 3_nutcracker.yaml.
+#
+# Before applying this file, make sure the ConfigMap exists:
+#
+#   kubectl get configmap twem-config
+#
+# Then apply:
+#   kubectl apply -f 4_twemproxy-ambassador-pod.yaml
+#
+# Check:
+#   kubectl get pod ambassador-example
+#   kubectl describe pod ambassador-example
+#   kubectl logs ambassador-example -c twemproxy
+#   kubectl logs ambassador-example -c nginx
+# ============================================================================
+
+apiVersion: v1
+kind: Pod
+
+metadata:
+  name: ambassador-example
+
+spec:
+  containers:
+
+    # ------------------------------------------------------------------------
+    # CONTAINER 1: Example application
+    # ------------------------------------------------------------------------
+    # nginx is only a placeholder here to demonstrate that your application and
+    # Twemproxy can live inside the same Pod.
+    #
+    # In a real application this could be:
+    #   - Flask
+    #   - FastAPI
+    #   - Java Spring Boot
+    #   - Node.js
+    #   - another service that needs Redis
+    #
+    # That application would configure its Redis connection as:
+    #   host = 127.0.0.1
+    #   port = 6379
+    #
+    # It would NOT connect directly to sharded-redis-0/1/2.
+    - name: nginx
+      image: nginx
+
+    # ------------------------------------------------------------------------
+    # CONTAINER 2: Twemproxy ambassador
+    # ------------------------------------------------------------------------
+    - name: twemproxy
+      image: ganomede/twemproxy
+
+      # Start the Nutcracker/Twemproxy process.
+      #
+      # nutcracker
+      #   Twemproxy executable.
+      #
+      # -c /etc/config/nutcracker.yaml
+      #   Load the configuration created from File 3.
+      #
+      # -v 7
+      #   Set a verbose logging level, useful for a learning/demo environment.
+      #
+      # -s 6222
+      #   Run Twemproxy's statistics endpoint on port 6222.
+      command: [ "nutcracker", "-c", "/etc/config/nutcracker.yaml", "-v", "7", "-s", "6222" ]
+
+      # Mount the ConfigMap into this container as files.
+      volumeMounts:
+        - name: config-volume
+          mountPath: /etc/config
+
+  # --------------------------------------------------------------------------
+  # POD-LEVEL VOLUME
+  # --------------------------------------------------------------------------
+  # This volume is backed by the Kubernetes ConfigMap named "twem-config".
+  #
+  # Because File 3 was stored in that ConfigMap under the key
+  # "nutcracker.yaml", mounting the ConfigMap at /etc/config results in:
+  #
+  #   /etc/config/nutcracker.yaml
+  #
+  # This is the same path passed to Twemproxy with the -c option above.
+  volumes:
+    - name: config-volume
+      configMap:
+        name: twem-config
+
+# ============================================================================
+# COMPLETE NETWORK FLOW
+#
+# SAME POD
+# +------------------------------------------------------------+
+# |                                                            |
+# |  Application (nginx here)                                  |
+# |          |                                                 |
+# |          | 127.0.0.1:6379                                  |
+# |          v                                                 |
+# |     Twemproxy                                              |
+# |          |                                                 |
+# +----------|-------------------------------------------------+
+#            |
+#            | Kubernetes network + DNS
+#            |
+#            +----> sharded-redis-0.redis:6379
+#            +----> sharded-redis-1.redis:6379
+#            +----> sharded-redis-2.redis:6379
+#
+# KEY IDEA:
+# The application sees ONE local Redis endpoint.
+# Twemproxy sees and manages the THREE Redis shard endpoints.
+# ============================================================================

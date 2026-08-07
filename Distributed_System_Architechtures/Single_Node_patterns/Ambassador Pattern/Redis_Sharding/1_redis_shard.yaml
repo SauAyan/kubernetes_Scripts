@@ -1,0 +1,92 @@
+# ============================================================================
+# FILE 1: Redis StatefulSet
+# ============================================================================
+# PURPOSE:
+# Create three Redis Pods with stable Kubernetes identities.
+#
+# IMPORTANT CONCEPT:
+# Although "replicas: 3" is used by the StatefulSet, these Redis instances are
+# NOT configured as Redis primary/replica nodes. They are three independent
+# Redis servers that Twemproxy will use as SHARDS.
+#
+# Kubernetes will give them predictable names:
+#   sharded-redis-0
+#   sharded-redis-1
+#   sharded-redis-2
+#
+# Together with the headless Service named "redis", their DNS names become:
+#   sharded-redis-0.redis
+#   sharded-redis-1.redis
+#   sharded-redis-2.redis
+#
+# Those exact DNS names are referenced later in 3_nutcracker.yaml.
+#
+# NOTE ABOUT APPLY ORDER:
+# For studying, this is File 1. In an actual deployment, it is usually clearer
+# to create the headless Service (File 2) BEFORE this StatefulSet so that the
+# stable DNS records are available immediately.
+#
+# Apply:
+#   kubectl apply -f 1_redis_shard.yaml
+#
+# Check:
+#   kubectl get statefulset
+#   kubectl get pods -l app=redis
+# ============================================================================
+
+apiVersion: apps/v1            # StatefulSet belongs to the apps/v1 API group.
+kind: StatefulSet              # StatefulSet gives Pods stable names/identities.
+
+metadata:
+  name: sharded-redis          # Base name of the StatefulSet.
+                               # Pods will be sharded-redis-0, -1 and -2.
+
+spec:
+  # serviceName links the StatefulSet to the HEADLESS Service defined in
+  # 2_redis-service.yaml. This is what gives the Pods stable network identities.
+  serviceName: "redis"
+
+  # Kubernetes will maintain three Redis Pods.
+  # Again: these are three shards in this demo, not Redis replication members.
+  replicas: 3
+
+  # The StatefulSet manages Pods carrying the label app=redis.
+  # This selector MUST match the labels under template.metadata.labels below.
+  selector:
+    matchLabels:
+      app: redis
+
+  # "template" is the Pod template. Kubernetes uses it whenever it creates
+  # sharded-redis-0, sharded-redis-1 or sharded-redis-2.
+  template:
+    metadata:
+      labels:
+        app: redis              # Also used by the Service selector in File 2.
+
+    spec:
+      # When a Redis Pod is terminated, Kubernetes gives it up to 10 seconds
+      # to exit cleanly before forcefully killing it.
+      terminationGracePeriodSeconds: 10
+
+      containers:
+        - name: redis
+
+          # Uses the Redis image from the container registry.
+          # For production, pin an explicit version instead of using latest.
+          image: redis
+
+          ports:
+            # Redis listens on TCP port 6379 by default.
+            # containerPort documents the port used inside the Pod.
+            - containerPort: 6379
+              name: redis
+
+# ============================================================================
+# STORAGE WARNING:
+# This StatefulSet does NOT define volumeClaimTemplates or a PersistentVolume.
+# Therefore, the stable Pod identity is preserved, but Redis DATA is not
+# guaranteed to survive Pod recreation.
+#
+# A production Redis StatefulSet would normally add persistent storage if data
+# durability is required.
+# ============================================================================

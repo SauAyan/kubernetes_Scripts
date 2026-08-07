@@ -1,0 +1,100 @@
+# ============================================================================
+# FILE 3: Twemproxy / Nutcracker configuration
+# ============================================================================
+# PURPOSE:
+# Tell Twemproxy:
+#   1. where it should listen for Redis client requests, and
+#   2. which Redis shard should receive each key.
+#
+# IMPORTANT:
+# This is NOT a Kubernetes manifest. There is intentionally no apiVersion,
+# kind, metadata, or spec section here.
+#
+# Do NOT run:
+#   kubectl apply -f 3_nutcracker.yaml
+#
+# Instead, package this file into a Kubernetes ConfigMap:
+#
+#   kubectl create configmap twem-config --from-file=nutcracker.yaml=3_nutcracker.yaml
+#
+# This creates a ConfigMap named "twem-config" with a key/file called
+# "nutcracker.yaml". File 4 mounts that ConfigMap at /etc/config, producing:
+#
+#   /etc/config/nutcracker.yaml
+#
+# Check it with:
+#   kubectl get configmap twem-config
+#   kubectl describe configmap twem-config
+# ============================================================================
+
+# "redis" is the name of this Twemproxy pool.
+# It groups the backend Redis servers that Twemproxy will shard across.
+redis:
+
+  # Twemproxy listens on localhost port 6379 INSIDE the Pod.
+  # The application container in File 4 shares the same Pod network namespace,
+  # so it can talk to Twemproxy using 127.0.0.1:6379.
+  listen: 127.0.0.1:6379
+
+  # Hashing algorithm used as part of deciding which Redis shard receives a key.
+  hash: fnv1a_64
+
+  # Ketama is a consistent-hashing distribution algorithm.
+  # Consistent hashing helps distribute keys among the backend Redis servers
+  # while reducing how many keys move if the server set changes.
+  distribution: ketama
+
+  # If a Redis backend repeatedly fails, Twemproxy can temporarily remove it
+  # from the active server pool instead of continually sending traffic to it.
+  auto_eject_hosts: true
+
+  # Tell Twemproxy that this backend pool speaks the Redis protocol.
+  redis: true
+
+  # Backend operation timeout in milliseconds.
+  # If a Redis server does not respond within this period, the request can fail.
+  timeout: 400
+
+  # If a Redis server is ejected after failure, wait this many milliseconds
+  # before Twemproxy considers retrying it.
+  server_retry_timeout: 2000
+
+  # Number of failures allowed before a backend is considered failed/ejected.
+  # A value of 1 makes this demo react very quickly to a failed Redis shard.
+  server_failure_limit: 1
+
+  # List of backend Redis shards.
+  # Format used by Twemproxy here:
+  #   <hostname>:<port>:<weight>
+  #
+  # hostname:
+  #   Comes from StatefulSet Pod name + headless Service name.
+  #
+  # port:
+  #   6379 is Redis's standard port.
+  #
+  # weight:
+  #   All three are set to 1, so they have equal weight in key distribution.
+  servers:
+    - sharded-redis-0.redis:6379:1
+    - sharded-redis-1.redis:6379:1
+    - sharded-redis-2.redis:6379:1
+
+# ============================================================================
+# REQUEST FLOW AFTER ALL FILES ARE CONFIGURED
+#
+# Application
+#     |
+#     | Redis request to 127.0.0.1:6379
+#     v
+# Twemproxy
+#     |
+#     | hashes the Redis key using the configured algorithm
+#     |
+#     +----------> sharded-redis-0.redis:6379
+#     +----------> sharded-redis-1.redis:6379
+#     +----------> sharded-redis-2.redis:6379
+#
+# Twemproxy chooses ONE shard for a given key. It is not writing the same key
+# to all three Redis Pods.
+# ============================================================================

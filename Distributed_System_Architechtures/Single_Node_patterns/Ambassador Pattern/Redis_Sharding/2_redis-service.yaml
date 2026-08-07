@@ -1,0 +1,64 @@
+# ============================================================================
+# FILE 2: Headless Service for the Redis StatefulSet
+# ============================================================================
+# PURPOSE:
+# Give the Redis StatefulSet Pods stable DNS names that Twemproxy can address.
+#
+# This is a HEADLESS Service because:
+#   clusterIP: None
+#
+# A normal Service gives clients one virtual ClusterIP and load-balances traffic
+# across matching Pods. That would be undesirable for this example because
+# Twemproxy itself must know each Redis shard individually.
+#
+# With this headless Service, Kubernetes DNS can expose Pod-specific addresses:
+#   sharded-redis-0.redis
+#   sharded-redis-1.redis
+#   sharded-redis-2.redis
+#
+# These names are used directly in 3_nutcracker.yaml.
+#
+# Recommended deployment order:
+#   kubectl apply -f 2_redis-service.yaml
+#   kubectl apply -f 1_redis_shard.yaml
+#
+# Check:
+#   kubectl get service redis
+#   kubectl get endpoints redis
+# ============================================================================
+
+apiVersion: v1                 # Services are part of Kubernetes core API v1.
+kind: Service
+
+metadata:
+  name: redis                  # Must match serviceName: "redis" in StatefulSet.
+  labels:
+    app: redis
+
+spec:
+  ports:
+    - port: 6379               # Service port used to reach Redis.
+      name: redis              # Named port; useful for readability/discovery.
+
+  # clusterIP: None turns this into a HEADLESS Service.
+  # Kubernetes does not create one virtual load-balanced Service IP.
+  # Instead, DNS can return addresses for the individual Redis Pods.
+  clusterIP: None
+
+  # The Service discovers Pods that have the label app=redis.
+  # That label is added to the Pods by 1_redis_shard.yaml.
+  selector:
+    app: redis
+
+# ============================================================================
+# HOW THIS CONNECTS TO THE STATEFULSET
+#
+# StatefulSet Pod: sharded-redis-0
+#               +
+# Headless Service: redis
+#               |
+#               v
+# DNS name: sharded-redis-0.redis
+#
+# The same pattern gives sharded-redis-1.redis and sharded-redis-2.redis.
+# ============================================================================

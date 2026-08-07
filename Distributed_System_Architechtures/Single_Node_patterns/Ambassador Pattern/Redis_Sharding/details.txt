@@ -1,0 +1,81 @@
+REDIS SHARDING + TWEMPROXY KUBERNETES DEMO
+=========================================
+
+WHAT EACH FILE IS
+-----------------
+1_redis_shard.yaml
+  Kubernetes StatefulSet that creates three stable Redis Pods:
+  sharded-redis-0, sharded-redis-1, sharded-redis-2.
+
+2_redis-service.yaml
+  Headless Kubernetes Service called "redis". It gives the StatefulSet Pods
+  stable DNS names such as sharded-redis-0.redis.
+
+3_nutcracker.yaml
+  Twemproxy configuration, NOT a Kubernetes manifest. It tells Twemproxy which
+  Redis servers are available and how to distribute keys between them.
+
+4_twemproxy-ambassador-pod.yaml
+  Pod containing an example application container and a Twemproxy container.
+  The application can use localhost:6379, and Twemproxy routes traffic to a shard.
+
+RECOMMENDED DEPLOYMENT ORDER
+----------------------------
+Although the learning files are numbered 1-4, a clean deployment order is:
+
+1. Create the headless Redis Service:
+   kubectl apply -f 2_redis-service.yaml
+
+2. Create the Redis StatefulSet:
+   kubectl apply -f 1_redis_shard.yaml
+
+3. Turn the Twemproxy config file into a ConfigMap:
+   kubectl create configmap twem-config --from-file=nutcracker.yaml=3_nutcracker.yaml
+
+4. Create the application + Twemproxy Pod:
+   kubectl apply -f 4_twemproxy-ambassador-pod.yaml
+
+VERIFY
+------
+kubectl get pods
+kubectl get statefulset
+kubectl get service
+kubectl get configmap
+
+You should see Redis Pods:
+  sharded-redis-0
+  sharded-redis-1
+  sharded-redis-2
+
+And the ambassador Pod:
+  ambassador-example
+
+Useful commands:
+  kubectl describe svc redis
+  kubectl describe pod ambassador-example
+  kubectl logs ambassador-example -c twemproxy
+  kubectl get configmap twem-config -o yaml
+
+ARCHITECTURE
+------------
+
+Application
+    |
+    | localhost:6379
+    v
+Twemproxy
+    |
+    | consistent hashing
+    |
+    +----> sharded-redis-0.redis:6379
+    +----> sharded-redis-1.redis:6379
+    +----> sharded-redis-2.redis:6379
+
+IMPORTANT LIMITATIONS OF THIS DEMO
+----------------------------------
+1. The three Redis Pods are shards, not Redis replicas.
+2. No PersistentVolumeClaim is configured, so Redis data is not durable across
+   every Pod recreation scenario.
+3. The nginx container is only an example application. It does not automatically
+   issue Redis commands.
+4. The manifest uses unpinned container image tags; pin versions in production.
